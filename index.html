@@ -2,52 +2,50 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>AST Viewer</title>
+    <title>Advanced AST Viewer</title>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <style>
-        body { font-family: sans-serif; margin: 0; padding: 20px; }
-        .node circle { fill: #fff; stroke: #4682b4; stroke-width: 3px; }
-        .node text { font: 14px sans-serif; font-weight: bold; }
-        .link { fill: none; stroke: #ccc; stroke-width: 2px; }
+        body { font-family: sans-serif; margin: 0; overflow: hidden; background-color: #f9f9f9; }
+        .node circle { stroke: #333; stroke-width: 2px; }
+        .node text { font: 12px sans-serif; text-shadow: 1px 1px 3px white; font-weight: bold; }
+        .link { fill: none; stroke: #aaa; stroke-width: 2px; }
     </style>
 </head>
 <body>
     <script>
         d3.json("ast.json").then(function(data) {
-            const width = 1000;
-            const height = 600;
+            const width = window.innerWidth;
+            const height = window.innerHeight;
             
             const svg = d3.select("body").append("svg")
                 .attr("width", width)
                 .attr("height", height)
-                .append("g")
-                .attr("transform", "translate(40,40)");
+                .call(d3.zoom().on("zoom", (event) => {
+                    g.attr("transform", event.transform);
+                }));
 
-            const tree = d3.tree().size([width - 80, height - 100]);
+            const g = svg.append("g").attr("transform", "translate(40,40)");
+            const tree = d3.tree().size([width - 100, height - 150]);
             const root = d3.hierarchy(data);
             tree(root);
 
-            svg.selectAll(".link")
-                .data(root.links())
-                .enter().append("path")
-                .attr("class", "link")
-                .attr("d", d3.linkVertical()
-                    .x(d => d.x)
-                    .y(d => d.y));
+            g.selectAll(".link").data(root.links()).enter().append("path").attr("class", "link")
+                .attr("d", d3.linkVertical().x(d => d.x).y(d => d.y));
 
-            const node = svg.selectAll(".node")
-                .data(root.descendants())
-                .enter().append("g")
-                .attr("class", "node")
-                .attr("transform", d => `translate(${d.x},${d.y})`);
+            const node = g.selectAll(".node").data(root.descendants()).enter().append("g")
+                .attr("class", "node").attr("transform", d => `translate(${d.x},${d.y})`);
 
-            node.append("circle").attr("r", 12);
+            // Розфарбовування за типами
+            node.append("circle").attr("r", 14).attr("fill", d => {
+                if (d.data.type === "Number") return "#8cd98c"; // Зелений
+                if (d.data.type === "Variable") return "#ffcc66"; // Жовтий
+                if (d.data.type === "ControlFlow") return "#ff6666"; // Червоний
+                if (d.data.type === "Block") return "#b3b3b3"; // Сірий
+                return "#66b3ff"; // Синій (BinaryOp, Assign)
+            });
 
-            node.append("text")
-                .attr("dy", 4)
-                .attr("y", d => d.children ? -25 : 25)
-                .style("text-anchor", "middle")
-                .text(d => d.data.name);
+            node.append("text").attr("dy", 4).attr("y", d => d.children ? -25 : 25)
+                .style("text-anchor", "middle").text(d => d.data.name);
         });
     </script>
 </body>
